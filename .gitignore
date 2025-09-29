@@ -1,0 +1,37 @@
+# Ignore everything by default
+*
+
+# Keep control files
+!.gitignore
+!README.md
+!.github/
+!.github/**
+
+# Keep the pipeline
+!analysis_setup/
+!analysis_setup/**
+analysis_setup/.snakemake/
+analysis_setup/**/*.snakemake.log
+analysis_setup/**/logs/
+analysis_setup/**/R_logs/
+
+# Keep only tiny example data
+!data/
+data/*
+!data/example_pod5/
+data/example_pod5/*
+!data/example_pod5/500_example.pod5
+
+# Explicitly ignore bulky dirs
+dorado/
+dorado-models/
+out/
+out_example/
+output_data/
+pdf/
+pod5_example/
+R_analysis/
+scripts/
+tb427_genome/
+tb427_transcriptome/
+test/

@@ -1,0 +1,205 @@
+import os
+from pathlib import Path
+
+configfile: "config.yaml"
+
+# -------- Paths / names --------
+PREFIX   = config["prefix"]
+OUTDIR   = Path(config["outdir"])
+LOGDIR   = Path(config["logdir"])
+OUTDIR.mkdir(parents=True, exist_ok=True)
+LOGDIR.mkdir(parents=True, exist_ok=True)
+
+POD5         = config["pod5"]
+MODEL        = config["dorado_model"]
+KIT          = config["kit_name"]
+MM2_OPTS     = config["mm2_opts"]
+TX_FASTA     = config["tx_fasta"]
+GEN_FASTA    = config["genome_fasta"]
+FILTER_SCRIPT= config["filter_script"]
+
+ADAPTER      = config["adapter_seq"]
+MIN_MAPQ     = int(config["min_mapq"])
+MM_MAX       = int(config["mm_max"])
+EXTRACT_N    = int(config["extract_n"])
+
+# -------- Outputs --------
+BASECALL_BAM      = OUTDIR / f"{PREFIX}.basecall.bam"
+TX_BAM_TEMP       = OUTDIR / f"{PREFIX}.transcriptome.bam"             # temp
+TX_SUMMARY        = OUTDIR / f"{PREFIX}.summary_transcriptome.txt"
+GENOME_BAM        = OUTDIR / f"{PREFIX}.genome.bam"
+FILTERED_BAM      = OUTDIR / f"{PREFIX}.filtered_genome.bam"
+ENDS_TSV          = OUTDIR / f"{PREFIX}.ends.extracted.tsv"
+READ_IDS_TSV      = OUTDIR / f"{PREFIX}.read_ids_filtered.tsv"
+TAIL_CLASS_TSV    = OUTDIR / f"{PREFIX}.tail_end_classification.tsv"
+FINAL_TSV         = OUTDIR / f"{PREFIX}.final_table.tsv"
+
+# -------- Default target --------
+rule all:
+    input:
+        BASECALL_BAM,
+        TX_SUMMARY,
+        GENOME_BAM,
+        FILTERED_BAM,
+        ENDS_TSV,
+        READ_IDS_TSV,
+        TAIL_CLASS_TSV,
+        FINAL_TSV
+
+# 1) Basecall + poly(A) estimation -> BAM
+rule basecall_polya:
+    input:
+        pod5 = POD5,
+        model = MODEL
+    output:
+        bam = BASECALL_BAM
+    log:
+        LOGDIR / f"{PREFIX}.basecall.log"
+    threads: 8
+    shell:
+        r"""
+        set -euo pipefail
+        dorado basecaller \
+            --mm2-opts '{MM2_OPTS}' \
+            --estimate-poly-a \
+            --kit-name {KIT} \
+            --no-trim \
+            "{input.model}" "{input.pod5}" \
+            > "{output.bam}" 2> "{log}"
+        """
+
+# 2) Align basecall to transcriptome -> summary (bam is temp and auto-removed)
+rule align_transcriptome_and_summary:
+    input:
+        bam = BASECALL_BAM,
+        tx  = TX_FASTA
+    output:
+        tmp_bam = temp(TX_BAM_TEMP),
+        summary = TX_SUMMARY
+    log:
+        LOGDIR / f"{PREFIX}.tx_align.log"
+    threads: 8
+    shell:
+        r"""
+        set -euo pipefail
+        # Align to transcriptome
+        dorado aligner \
+            --mm2-opts '{MM2_OPTS}' \
+            "{input.tx}" "{input.bam}" \
+            > "{output.tmp_bam}" 2> "{log}"
+
+        # Make summary, keep it, drop BAM afterwards via temp()
+        dorado summary "{output.tmp_bam}" > "{output.summary}" 2>> "{log}"
+        """
+
+# 3) Align basecall to genome -> BAM
+rule align_genome:
+    input:
+        bam = BASECALL_BAM,
+        ref = GEN_FASTA
+    output:
+        bam = GENOME_BAM
+    log:
+        LOGDIR / f"{PREFIX}.gen_align.log"
+    threads: 8
+    shell:
+        r"""
+        set -euo pipefail
+        dorado aligner \
+            --mm2-opts '{MM2_OPTS}' \
+            "{input.ref}" "{input.bam}" \
+            > "{output.bam}" 2> "{log}"
+        """
+
+# 4) Clean false priming & extract soft-clipped tails -> filtered BAM + ends TSV
+#    Rules enforced by your Python script:
+#    1. Set up MAPQ filter (disabled)
+#    2. Adapter not found -> remove
+#    3. Adapter found >1x -> remove
+#    4. Adapter not within softclipped part -> remove
+rule filter_adapter_and_extract:
+    input:
+        bam = GENOME_BAM
+    params:
+        script = FILTER_SCRIPT
+    output:
+        bam = FILTERED_BAM,
+        ends = ENDS_TSV
+    log:
+        LOGDIR / f"{PREFIX}.filter_adapter.log"
+    threads: 8
+    shell:
+        r"""
+        set -euo pipefail
+        python "{params.script}" \
+            -i "{input.bam}" \
+            -o "{output.bam}" \
+            --adapter "{ADAPTER}" \
+            --min-mapq {MIN_MAPQ} \
+            --mm-max {MM_MAX} \
+            --fullread-classify \
+            --extract-n {EXTRACT_N} \
+            --extract-out "{output.ends}" \
+            > "{log}" 2>&1
+        """
+
+# 5) Generate read name list (unique) from FILTERED genome BAM
+rule make_read_id_list:
+    input:
+        bam = FILTERED_BAM
+    output:
+        tsv = READ_IDS_TSV
+    log:
+        LOGDIR / f"{PREFIX}.read_ids.log"
+    threads: 4
+    shell:
+        r"""
+        set -euo pipefail
+        (
+          echo "read_id"
+          samtools view -@ {threads} "{input.bam}" | cut -f1 | sort -u
+        ) > "{output.tsv}" 2> "{log}"
+        """
+# 6) R-based 3'-end sequences classification
+# 6) R-based 3'-end sequences classification (CLI args, no YAML inside R)
+rule r_end_classification:
+    input:
+        ends = ENDS_TSV
+    output:
+        TAIL_CLASS_TSV
+    params:
+        rfuns_dir = config.get("rfuns_dir", "scripts/R_functions"),
+        pure_A    = config.get("pure_A_threshold", 0.95),
+        min_run   = config.get("min_run", 5)
+    log:
+        LOGDIR / f"{PREFIX}.r_end_classification.log"
+    shell:
+        r'''
+        Rscript scripts/tail_sequence_analysis_snake.R \
+          "{input.ends}" \
+          "{output}" \
+          "{params.rfuns_dir}" \
+          "{params.pure_A}" \
+          "{params.min_run}" \
+          > "{log}" 2>&1
+        '''
+# 7) Final table assembly
+rule r_filter_join_final:
+    input:
+        summary = TX_SUMMARY,
+        names   = READ_IDS_TSV,
+        clas   = TAIL_CLASS_TSV
+    output:
+        FINAL_TSV
+    log:
+        LOGDIR / f"{PREFIX}.r_filter_join_final.log"
+    shell:
+        r'''
+        Rscript scripts/filter_join_final_snake.R \
+          "{input.summary}" \
+          "{input.names}" \
+          "{input.clas}" \
+          "{output}" \
+          "{LOGDIR}" \
+          > "{log}" 2>&1
+        '''
