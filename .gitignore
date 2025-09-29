@@ -31,7 +31,15 @@ output_data/
 pdf/
 pod5_example/
 R_analysis/
-scripts/
+/scripts/
 tb427_genome/
 tb427_transcriptome/
 test/
+
+# Keep empty structure for these dirs (ignore contents, keep .gitkeep)
+!tb427_genome/
+!tb427_transcriptome/
+tb427_genome/**
+tb427_transcriptome/**
+!tb427_genome/.gitkeep
+!tb427_transcriptome/.gitkeep
