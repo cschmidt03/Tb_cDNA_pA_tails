@@ -79,7 +79,12 @@ def revcomp(s):
     return s.translate(tr)[::-1]
 
 def ham(a, b):
-    return sum(x != y for x, y in zip(a, b))
+    if len(a) != len(b) or len(a) == 0 or len(b) == 0:
+        return -1
+    distance = 0
+    for i in range(len(a)):
+        distance += a[i] != b[i]
+    return distance
 
 def get_softclips(read):
     """
