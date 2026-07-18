@@ -36,6 +36,10 @@ tb427_genome/
 tb427_transcriptome/
 test/
 
+#explicitly ignore cython compilation output
+analysis_setup/scripts/*.so
+analysis_setup/cython/*.cpp
+
 # Keep empty structure for these dirs (ignore contents, keep .gitkeep)
 !tb427_genome/
 !tb427_transcriptome/
