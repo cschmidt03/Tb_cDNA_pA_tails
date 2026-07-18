@@ -23,10 +23,10 @@ suppressPackageStartupMessages({
 # read data
 ################################################################################
 desired_cols <- c(
-  "read_id", "alignment_genome", "barcode", "sequence_length_template",
-  "poly_tail_length", "alignment_mapq", "alignment_genome_start",
+  "read_id", "alignment_genome", "alias", "sequence_length_template",
+  "poly_tail_length", "alignment_mapping_quality", "alignment_genome_start",
   "alignment_genome_end", "alignment_strand_start", "alignment_strand_end",
-  "alignment_direction", "alignment_length"
+  "alignment_direction"
 )
 
 df <- read_tsv(
@@ -35,19 +35,22 @@ df <- read_tsv(
   col_types = cols(
     read_id                  = col_character(),
     alignment_genome         = col_character(),
-    barcode                  = col_character(),
+    alias		  = col_character(),
     sequence_length_template = col_integer(),
     poly_tail_length         = col_integer(),
-    alignment_mapq           = col_integer(),
+    alignment_mapping_quality  = col_integer(),
     alignment_genome_start   = col_integer(),
     alignment_genome_end     = col_integer(),
     alignment_strand_start   = col_integer(),
     alignment_strand_end     = col_integer(),
-    alignment_direction      = col_character(),
-    alignment_length         = col_integer()
+    alignment_direction      = col_character()
   ),
   show_col_types = FALSE
-)
+) %>% mutate(alignment_length = alignment_genome_end - alignment_genome_start) %>%
+	rename(barcode = alias, alignment_mapq = alignment_mapping_quality)
+
+#renaming and alignment_length for compatibility, column names of dorado summary were changed
+#somewhere between version 0.9.X and 2.X 
 
 names_filtered <- read_tsv(
   in_names,
