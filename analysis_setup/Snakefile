@@ -127,13 +127,14 @@ rule filter_adapter_and_extract:
         ends = ENDS_TSV
     log:
         LOGDIR / f"{PREFIX}.filter_adapter.log"
-    threads: 8
+    threads: 12
     shell:
         r"""
         set -euo pipefail
         python "{params.script}" \
             -i "{input.bam}" \
             -o "{output.bam}" \
+            --n-threads {threads} \
             --adapter "{ADAPTER}" \
             --min-mapq {MIN_MAPQ} \
             --mm-max {MM_MAX} \

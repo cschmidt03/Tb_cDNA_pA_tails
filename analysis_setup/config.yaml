@@ -22,7 +22,7 @@ mm_max: 1
 extract_n: 10
 
 # Scripts (kept inside analysis_setup/scripts or sibling ../scripts)
-filter_script: "scripts/filter_adapter_categorized.py"
+filter_script: "scripts/filter_adapter_categorized_multiprocessing.py"
 
 # R helper dir (optional; your R script defaults to scripts/R_functions if omitted)
 rfuns_dir: "scripts/R_functions"
