@@ -6,3 +6,5 @@ This repo tracks:
 - `data/example_pod5/500_example.pod5` — tiny example only
 
 Large data/models/outputs live outside the repo and are ignored by design.
+
+[Changes to original pipeline](docs/changes_to_original.md)
