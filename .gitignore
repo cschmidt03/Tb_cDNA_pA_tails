@@ -6,6 +6,8 @@
 !README.md
 !.github/
 !.github/**
+!docs/
+!docs/**
 
 # Keep the pipeline
 !analysis_setup/

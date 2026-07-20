@@ -18,7 +18,7 @@ cdef extern from *:
     static inline uint64_t cy_bgzf_tell(BGZF* fp) {return bgzf_tell(fp);}
     '''
 
-DEF DISCARD_BUFFER_SIZE = 4096 * 1024 #4 MiB
+DEF DISCARD_BUFFER_SIZE = 4 * 1024 * 1024 #4 MiB, will get allocated in .bss segment not stack!
 cdef uint8_t[DISCARD_BUFFER_SIZE] discard_buffer
 cdef uint32_t size
 ctypedef (uint64_t, uint64_t) offset_pair
