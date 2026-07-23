@@ -44,6 +44,7 @@ def get_virtual_offsets(bytes path, int chunk_size, input_queue):
 
     cdef int read_n = 0
     send_offsets[0] = cy_bgzf_tell(bamf)
+    send_offsets[1] = cy_bgzf_tell(bamf)
 
     #bzgf_read returns 0 on EOF, -1 on ERROR, this writes the size of the next read to size
     while bgzf_read(bamf, &size, 4) > 0: 

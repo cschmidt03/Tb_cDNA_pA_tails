@@ -58,7 +58,7 @@ def deletion_scan_set(str seq, str pat):
     cdef char last_drop = '\0'
     while i < L:
         if s_pat[i] != last_drop: #if this char is the same as the last char removed, the variants are the same!
-            del_variants.push_back(s_pat.substr(0, i) + s_pat.substr(i+1))
+            del_variants.insert(s_pat.substr(0, i) + s_pat.substr(i+1))
         last_drop = s_pat[i]
         i += 1
 
