@@ -1,6 +1,5 @@
-from setuptools import setup
+from setuptools import setup, Extension
 from Cython.Build import cythonize
-from distutils.extension import Extension
 import os
 
 include_dirs = []
