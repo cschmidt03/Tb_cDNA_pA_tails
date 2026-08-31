@@ -7,5 +7,5 @@ This repo tracks:
 
 Large data/models/outputs live outside the repo and are ignored by design.
 
-[Changes to original pipeline](docs/changes_to_original.md) 
+[Changes to original pipeline](docs/changes_to_original.md)  
 [How to compile the Cython extensions](docs/compile_cython.md)
