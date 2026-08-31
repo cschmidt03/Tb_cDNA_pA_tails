@@ -247,7 +247,7 @@ def process_bam(in_bam, out_bam, adapter_fwd, min_mapq,
                 stats["removed_unmapped"] += 1
                 continue
 
-            if r.mapping_quality is None or r.mapping_quality <= 0 or r.mapping_quality < min_mapq:
+            if r.mapping_quality is None or r.mapping_quality < 0 or r.mapping_quality < min_mapq:
                 stats["removed_mapq0_or_below"] += 1
                 continue
 
